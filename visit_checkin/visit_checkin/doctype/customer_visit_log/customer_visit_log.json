@@ -1,0 +1,292 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "autoname": "format:CVL-{YYYY}-{#####}",
+ "creation": "2026-10-03 10:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "employee",
+  "employee_name",
+  "visit_date",
+  "column_break_main",
+  "milestone",
+  "customer_name",
+  "status",
+  "arrival_section",
+  "arrival_time",
+  "arrival_latitude",
+  "arrival_longitude",
+  "arrival_column",
+  "arrival_photo",
+  "departure_section",
+  "departure_time",
+  "departure_latitude",
+  "departure_longitude",
+  "departure_column",
+  "departure_photo",
+  "tracking_section",
+  "time_spent_minutes",
+  "distance_from_home_km",
+  "tracking_column",
+  "distance_source",
+  "origin_type",
+  "sync_section",
+  "is_offline_entry",
+  "synced_at",
+  "sync_column",
+  "client_ref",
+  "departure_ref",
+  "remarks"
+ ],
+ "fields": [
+  {
+   "fieldname": "employee",
+   "fieldtype": "Link",
+   "label": "Employee",
+   "options": "Employee",
+   "reqd": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "employee_name",
+   "fieldtype": "Data",
+   "label": "Employee Name",
+   "fetch_from": "employee.employee_name",
+   "read_only": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "visit_date",
+   "fieldtype": "Date",
+   "label": "Visit Date",
+   "default": "Today",
+   "reqd": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "column_break_main",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "milestone",
+   "fieldtype": "Select",
+   "label": "Milestone",
+   "options": "Home Departure\nCustomer Visit\nHome Arrival",
+   "reqd": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "customer_name",
+   "fieldtype": "Data",
+   "label": "Customer Name",
+   "in_list_view": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Open\nCompleted",
+   "default": "Open",
+   "in_list_view": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "arrival_section",
+   "fieldtype": "Section Break",
+   "label": "Arrival"
+  },
+  {
+   "fieldname": "arrival_time",
+   "fieldtype": "Datetime",
+   "label": "Arrival Time"
+  },
+  {
+   "fieldname": "arrival_latitude",
+   "fieldtype": "Float",
+   "label": "Arrival Latitude",
+   "precision": "6"
+  },
+  {
+   "fieldname": "arrival_longitude",
+   "fieldtype": "Float",
+   "label": "Arrival Longitude",
+   "precision": "6"
+  },
+  {
+   "fieldname": "arrival_column",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "arrival_photo",
+   "fieldtype": "Attach Image",
+   "label": "Arrival Photo"
+  },
+  {
+   "fieldname": "departure_section",
+   "fieldtype": "Section Break",
+   "label": "Departure"
+  },
+  {
+   "fieldname": "departure_time",
+   "fieldtype": "Datetime",
+   "label": "Departure Time"
+  },
+  {
+   "fieldname": "departure_latitude",
+   "fieldtype": "Float",
+   "label": "Departure Latitude",
+   "precision": "6"
+  },
+  {
+   "fieldname": "departure_longitude",
+   "fieldtype": "Float",
+   "label": "Departure Longitude",
+   "precision": "6"
+  },
+  {
+   "fieldname": "departure_column",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "departure_photo",
+   "fieldtype": "Attach Image",
+   "label": "Departure Photo"
+  },
+  {
+   "fieldname": "tracking_section",
+   "fieldtype": "Section Break",
+   "label": "Tracking"
+  },
+  {
+   "fieldname": "time_spent_minutes",
+   "fieldtype": "Float",
+   "label": "Time Spent (Minutes)",
+   "read_only": 1,
+   "in_list_view": 1,
+   "precision": "1"
+  },
+  {
+   "fieldname": "distance_from_home_km",
+   "fieldtype": "Float",
+   "label": "Distance From Home (KM)",
+   "read_only": 1,
+   "in_list_view": 1,
+   "precision": "2"
+  },
+  {
+   "fieldname": "tracking_column",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "distance_source",
+   "fieldtype": "Data",
+   "label": "Distance Type",
+   "read_only": 1,
+   "description": "Google Road = real road distance; Straight-line = aerial distance"
+  },
+  {
+   "fieldname": "origin_type",
+   "fieldtype": "Data",
+   "label": "Distance Origin",
+   "read_only": 1,
+   "description": "Employee Home (master data) or Day Start Location (Home Departure check-in)"
+  },
+  {
+   "fieldname": "sync_section",
+   "fieldtype": "Section Break",
+   "label": "Sync Details",
+   "collapsible": 1
+  },
+  {
+   "fieldname": "is_offline_entry",
+   "fieldtype": "Check",
+   "label": "Captured Offline",
+   "read_only": 1
+  },
+  {
+   "fieldname": "synced_at",
+   "fieldtype": "Datetime",
+   "label": "Synced At",
+   "read_only": 1
+  },
+  {
+   "fieldname": "sync_column",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "client_ref",
+   "fieldtype": "Data",
+   "label": "Client Ref",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "departure_ref",
+   "fieldtype": "Data",
+   "label": "Departure Client Ref",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "remarks",
+   "fieldtype": "Small Text",
+   "label": "Remarks",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "links": [],
+ "modified": "2026-10-03 10:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Visit Checkin",
+ "name": "Customer Visit Log",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "role": "System Manager",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "report": 1,
+   "export": 1,
+   "share": 1
+  },
+  {
+   "role": "HR Manager",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "report": 1,
+   "export": 1,
+   "share": 1
+  },
+  {
+   "role": "HR User",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "report": 1,
+   "export": 1
+  },
+  {
+   "role": "Employee",
+   "read": 1,
+   "if_owner": 1
+  }
+ ],
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "employee_name",
+ "track_changes": 1
+}

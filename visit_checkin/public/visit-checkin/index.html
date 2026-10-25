@@ -1,0 +1,996 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Visit Check-in</title>
+
+  <link rel="manifest" href="/assets/visit_checkin/visit-checkin/manifest.json">
+  <meta name="theme-color" content="#4CAF50">
+
+  <!-- iOS "Add to Home Screen" -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Visit Check-in">
+  <link rel="apple-touch-icon" href="/assets/visit_checkin/visit-checkin/icon-192.png">
+  <link rel="icon" type="image/png" href="/assets/visit_checkin/visit-checkin/icon-192.png">
+
+  <style>
+    :root { --g:#4CAF50; --r:#F44336; --o:#FF9800; --b:#2196F3; --t:#333; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; background: #fafafa; color: var(--t);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+      padding-top: env(safe-area-inset-top, 0px);
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+      -webkit-text-size-adjust: 100%;
+    }
+    button { font-family: inherit; cursor: pointer; }
+    #app { max-width: 900px; margin: 0 auto; padding: 18px 14px 48px; }
+
+    .top { text-align: center; position: relative; margin-bottom: 18px; }
+    .top h2 { margin: 0; font-size: 22px; padding: 0 70px; }
+    .conn { position: absolute; top: 2px; left: 0; font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 12px; color: #fff; background: var(--g); }
+    .conn.off { background: #607D8B; }
+    .refresh { position: absolute; top: 0; right: 0; background: var(--b); color: #fff; border: 0; padding: 7px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; }
+    #current-status-label { margin-top: 8px; font-size: 13px; color: #777; min-height: 16px; }
+    #gps-label { display: none; margin-top: 6px; font-size: 12px; color: #1976D2; font-weight: 600; }
+    .badge { display: none; margin: 8px auto 0; max-width: 520px; font-size: 12px; font-weight: 700; padding: 8px 12px; border-radius: 10px; cursor: pointer; }
+    .badge-orange { background: #FFF3E0; color: #E65100; }
+    .badge-red { background: #FFEBEE; color: #C62828; }
+
+    #checkin-btn { margin-top: 14px; padding: 15px 38px; border: 0; border-radius: 32px; background: var(--g); color: #fff; font-size: 17px; font-weight: 700; box-shadow: 0 4px 12px rgba(76,175,80,.4); transition: transform .1s ease; }
+    #checkin-btn:active { transform: scale(.95); }
+    #checkin-btn:disabled { background: #aaa; box-shadow: none; }
+
+    .tiles { display: flex; justify-content: center; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
+    .tile { padding: 8px 14px; border-radius: 8px; text-align: center; min-width: 74px; cursor: pointer; }
+    .tile b { display: block; font-size: 17px; }
+    .tile span { font-size: 11px; color: #555; }
+    .links { text-align: center; margin-bottom: 16px; font-size: 13px; }
+    .links a, .linkbtn { color: var(--b); text-decoration: underline; cursor: pointer; background: none; border: 0; font-size: 13px; padding: 0; }
+
+    .monthnav { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+    .monthnav button { border: 0; background: #eee; padding: 9px 15px; border-radius: 8px; font-size: 16px; }
+    .monthnav div { font-size: 18px; font-weight: 600; }
+    #calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin-bottom: 24px; }
+    .dow { text-align: center; font-weight: 600; color: #888; padding: 6px 0; font-size: 13px; }
+    .cell { text-align: center; padding: 12px 0; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; background: #f1f1f1; color: #aaa; }
+
+    .sec { border-top: 1px solid #eee; padding-top: 16px; margin-bottom: 16px; }
+    .sec h3 { margin: 0 0 10px; font-size: 15px; }
+    .cards { display: flex; gap: 10px; flex-wrap: wrap; }
+    .card { background: #f5f5f5; padding: 8px 14px; border-radius: 8px; text-align: center; min-width: 90px; }
+    .card b { display: block; font-size: 16px; }
+    .card span { font-size: 11px; color: #666; }
+    .actions { text-align: center; }
+    .actions button { border: 0; background: none; color: var(--b); font-size: 14px; font-weight: 600; margin: 0 12px; padding: 4px; }
+    .hol { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f0f0f0; font-size: 13px; }
+    .muted { color: #999; font-size: 13px; }
+
+    /* overlays */
+    .ov { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,.55); z-index: 1000; display: flex; align-items: center; justify-content: center; }
+    .ov-top { z-index: 3000; }
+    .box { background: #fff; border-radius: 14px; padding: 20px; width: 92%; max-width: 440px; max-height: 80vh; overflow-y: auto; box-shadow: 0 10px 30px rgba(0,0,0,.25); }
+    .box h3 { margin: 0; }
+    .boxhead { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+    .x { cursor: pointer; font-size: 26px; color: #888; line-height: 1; background: none; border: 0; }
+    table { width: 100%; border-collapse: collapse; }
+    th { text-align: left; padding: 8px; border-bottom: 2px solid #ddd; font-size: 13px; }
+    td { padding: 8px; border-bottom: 1px solid #eee; font-size: 13px; }
+    .msg { text-align: center; }
+    .msg .ic { font-size: 40px; margin-bottom: 8px; }
+    .msg .tx { font-size: 16px; font-weight: 600; margin-bottom: 18px; word-break: break-word; }
+    .okbtn { border: 0; color: #fff; padding: 10px 34px; border-radius: 25px; font-size: 15px; font-weight: 600; }
+    #toast { position: fixed; left: 50%; bottom: calc(30px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: #323232; color: #fff; padding: 10px 18px; border-radius: 22px; font-size: 14px; z-index: 4000; display: none; max-width: 90%; text-align: center; }
+
+    #camera-modal { display: none; }
+    #camera-modal .box { text-align: center; max-width: 380px; }
+    #customer-name-input { display: none; width: 100%; padding: 11px; margin-bottom: 10px; border: 1px solid #ccc; border-radius: 8px; font-size: 16px; }
+    #mark-home-wrap { display: none; text-align: left; margin: 0 0 10px; font-size: 14px; }
+    #camera-video, #camera-preview-img { width: 100%; border-radius: 10px; background: #000; max-height: 46vh; object-fit: cover; }
+    #camera-video { transform: scaleX(-1); }
+    #camera-preview-img { display: none; }
+    .camrow { margin-top: 12px; display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+    .camrow button { padding: 11px 20px; border: 0; border-radius: 22px; font-size: 15px; font-weight: 600; color: #fff; }
+
+    .fail-row { padding: 10px 0; border-bottom: 1px solid #eee; font-size: 13px; }
+    .fail-row .err { color: #C62828; margin: 4px 0 8px; }
+    .fail-row button { border: 0; padding: 7px 14px; border-radius: 16px; color: #fff; margin-right: 8px; font-size: 13px; font-weight: 600; }
+
+    #ios-hint { display: none; background: #E3F2FD; color: #0D47A1; border-radius: 10px; padding: 10px 12px; font-size: 13px; margin-bottom: 14px; text-align: center; }
+    #ios-hint button { border: 0; background: none; color: #0D47A1; font-weight: 700; margin-left: 8px; }
+  </style>
+</head>
+<body>
+
+<div id="app">
+
+  <div id="ios-hint">
+    Install this app: tap <b>Share</b> &#x2B06;&#xFE0F; then <b>Add to Home Screen</b>.
+    <button id="ios-hint-close" type="button">Got it</button>
+  </div>
+
+  <div class="top">
+    <div id="conn-pill" class="conn">Online</div>
+    <button id="refresh-btn" class="refresh" type="button">&#8635; Refresh</button>
+    <h2 id="emp-name-header">Loading...</h2>
+    <div id="current-status-label"></div>
+    <div id="gps-label"></div>
+    <div id="pending-sync-label" class="badge" role="button"></div>
+    <button id="checkin-btn" type="button" disabled>Loading...</button>
+  </div>
+
+  <div class="tiles">
+    <div class="tile" id="present-block" style="background:#E8F5E9"><b id="present-count" style="color:#4CAF50">0</b><span>Present</span></div>
+    <div class="tile" id="halfday-block" style="background:#FFF3E0"><b id="halfday-count" style="color:#FF9800">0</b><span>Half Day</span></div>
+    <div class="tile" id="absent-block" style="background:#FFEBEE"><b id="absent-count" style="color:#F44336">0</b><span>Absent</span></div>
+    <div class="tile" id="leave-block" style="background:#E3F2FD"><b id="leave-count" style="color:#2196F3">0</b><span>On Leave</span></div>
+  </div>
+
+  <div class="links">
+    <a href="#" id="view-checkin-list">View Checkin List</a> &nbsp;|&nbsp;
+    <a href="#" id="view-visit-list">Today's Customer Visits</a>
+  </div>
+
+  <div class="monthnav">
+    <button id="prev-month-btn" type="button">&#8592;</button>
+    <div id="month-label"></div>
+    <button id="next-month-btn" type="button">&#8594;</button>
+  </div>
+  <div id="calendar-grid"></div>
+
+  <div class="sec">
+    <h3>Leave Balance</h3>
+    <div id="leave-balance-section" class="cards"></div>
+  </div>
+
+  <div class="sec actions">
+    <button type="button" id="apply-leave-btn">Apply Leave</button>
+    <span style="color:#ccc">|</span>
+    <button type="button" id="attendance-request-btn">Attendance Request</button>
+  </div>
+
+  <div class="sec">
+    <h3>Holidays This Month</h3>
+    <div id="holidays-section"></div>
+  </div>
+</div>
+
+<!-- camera -->
+<div id="camera-modal" class="ov">
+  <div class="box">
+    <div id="camera-title" style="font-weight:700;margin-bottom:10px">Take Photo</div>
+    <input type="text" id="customer-name-input" placeholder="Customer name" autocomplete="off">
+    <label id="mark-home-wrap"><input type="checkbox" id="mark-home-checkbox"> I have reached home (end of day)</label>
+    <video id="camera-video" autoplay playsinline muted></video>
+    <img id="camera-preview-img" alt="Captured photo">
+    <canvas id="camera-canvas" style="display:none"></canvas>
+    <div class="camrow">
+      <button id="capture-photo-btn" type="button" style="background:#2196F3">&#128247; Capture</button>
+      <button id="retake-photo-btn" type="button" style="background:#FF9800;display:none">Retake</button>
+      <button id="confirm-photo-btn" type="button" style="background:#4CAF50;display:none">&#10003; Confirm</button>
+      <button id="cancel-camera-btn" type="button" style="background:#9E9E9E">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+(function () {
+  "use strict";
+
+  /* =====================================================================
+     CONFIG / STATE
+  ===================================================================== */
+  var API_BASE = "/api/method/visit_checkin.api.";
+  var LOGIN_URL = "/login?redirect-to=" + encodeURIComponent("/assets/visit_checkin/visit-checkin/index.html");
+
+  var csrfToken = "";
+  var syncing = false;
+  var authBlocked = false;
+  var counts = { pending: 0, failed: 0 };
+
+  var calYear = new Date().getFullYear();
+  var calMonth = new Date().getMonth() + 1;
+  var lastCalendarData = null;
+
+  var STATES = {
+    home_departure:           { action: "home_departure",           label: "Start Day (Leaving Home)",     needs_customer: false },
+    customer_arrival:         { action: "customer_arrival",         label: "Arrived at Customer",          needs_customer: true },
+    customer_departure:       { action: "customer_departure",       label: "Leaving Customer",             needs_customer: false },
+    customer_arrival_or_home:  { action: "customer_arrival_or_home", label: "Next Customer / Reached Home", needs_customer: "optional" },
+    day_ended:                { action: "day_ended",                label: "Day Completed",                needs_customer: false }
+  };
+  // state that follows once the given action has been performed
+  var NEXT_AFTER = {
+    home_departure: "customer_arrival",
+    customer_arrival: "customer_departure",
+    customer_departure: "customer_arrival_or_home",
+    home_arrival: "day_ended"
+  };
+  var ACTION_LABELS = {
+    home_departure: "Left home",
+    customer_arrival: "Arrived at customer",
+    customer_departure: "Left customer",
+    home_arrival: "Reached home"
+  };
+
+  var baseStateKey = null;           // last state reported by the server (or cache)
+  var currentStateKey = "home_departure";
+
+  var STATUS_COLORS = { "Present": "#4CAF50", "Half Day": "#FF9800", "Absent": "#F44336", "On Leave": "#2196F3" };
+  var MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+
+  /* =====================================================================
+     SMALL HELPERS
+  ===================================================================== */
+  function $(id) { return document.getElementById(id); }
+  function pad(n) { return n < 10 ? "0" + n : "" + n; }
+
+  function esc(s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+  function stripTags(s) { return String(s).replace(/<[^>]*>/g, ""); }
+
+  function store(key, value) { try { localStorage.setItem(key, JSON.stringify(value)); } catch (e) {} }
+  function load(key) { try { var s = localStorage.getItem(key); return s ? JSON.parse(s) : null; } catch (e) { return null; } }
+
+  function localDateStr() { var d = new Date(); return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()); }
+  function uid() {
+    if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+    return Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 12);
+  }
+  function fmtLocal(iso) {
+    try {
+      var d = new Date(iso);
+      return d.toLocaleString("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
+    } catch (e) { return iso || ""; }
+  }
+  function byId(a, b) { return a.id - b.id; }
+
+  /* =====================================================================
+     OVERLAYS / MESSAGES
+  ===================================================================== */
+  function openOverlay(id, html, extraClass) {
+    var old = $(id); if (old) old.remove();
+    var ov = document.createElement("div");
+    ov.id = id;
+    ov.className = "ov" + (extraClass ? " " + extraClass : "");
+    ov.innerHTML = '<div class="box">' + html + "</div>";
+    ov.addEventListener("click", function (e) { if (e.target === ov) ov.remove(); });
+    document.body.appendChild(ov);
+    var x = ov.querySelector("[data-close]");
+    if (x) x.addEventListener("click", function () { ov.remove(); });
+    return ov;
+  }
+
+  function showMessage(text, isError) {
+    var color = isError ? "#F44336" : "#4CAF50";
+    var ov = openOverlay("msg-ov",
+      '<div class="msg"><div class="ic" style="color:' + color + '">' + (isError ? "&#10060;" : "&#9989;") + "</div>" +
+      '<div class="tx">' + esc(text) + "</div>" +
+      '<button class="okbtn" data-close style="background:' + color + '">OK</button></div>', "ov-top");
+    return ov;
+  }
+
+  var toastTimer = null;
+  function toast(text) {
+    var t = $("toast");
+    t.textContent = text; t.style.display = "block";
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { t.style.display = "none"; }, 3200);
+  }
+
+  function showListModal(title, headHtml, rowsHtml) {
+    openOverlay("list-ov",
+      '<div class="boxhead"><h3>' + esc(title) + '</h3><button class="x" data-close type="button">&times;</button></div>' +
+      "<table><tr>" + headHtml + "</tr>" + rowsHtml + "</table>");
+  }
+
+  /* =====================================================================
+     CONNECTION PILL
+  ===================================================================== */
+  function updateConn() {
+    var p = $("conn-pill");
+    var on = navigator.onLine;
+    p.textContent = on ? "Online" : "Offline";
+    p.className = "conn" + (on ? "" : " off");
+  }
+
+  /* =====================================================================
+     API
+  ===================================================================== */
+  function extractErrorText(data) {
+    if (!data) return "Something went wrong";
+    if (data._server_messages) {
+      try {
+        var arr = JSON.parse(data._server_messages), out = [];
+        arr.forEach(function (m) { try { var o = JSON.parse(m); if (o.message) out.push(o.message); } catch (e) {} });
+        if (out.length) return stripTags(out.join(" | "));
+      } catch (e) {}
+    }
+    if (data.exception) return stripTags(String(data.exception).replace(/^[\w.]+:\s*/, ""));
+    if (typeof data.message === "string") return stripTags(data.message);
+    return "Something went wrong";
+  }
+
+  function callApi(method, args) {
+    return fetch(API_BASE + method, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Frappe-CSRF-Token": csrfToken || "" },
+      credentials: "same-origin",
+      body: JSON.stringify(args || {})
+    }).then(function (response) {
+      return response.json().catch(function () { return {}; }).then(function (data) {
+        if (!response.ok) {
+          var err = new Error(extractErrorText(data));
+          err.status = response.status;
+          err.isAuthError = response.status === 401 || response.status === 403 ||
+            data.exc_type === "CSRFTokenError" || data.exc_type === "AuthenticationError";
+          throw err;
+        }
+        return data;
+      });
+    }, function () {
+      var e = new Error("Network error");
+      e.isNetworkError = true;
+      throw e;
+    });
+  }
+
+  // "ok" | "guest" | "network"
+  function fetchCsrf() {
+    return fetch(API_BASE + "get_csrf_token", { credentials: "same-origin", cache: "no-store" })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        var m = d && d.message;
+        if (m && m.csrf_token) { csrfToken = m.csrf_token; store("vc_csrf", csrfToken); return "ok"; }
+        return "guest";
+      })
+      .catch(function () { return "network"; });
+  }
+
+  // callApi + one automatic re-auth attempt when the CSRF token / session went stale
+  function callApiSafe(method, args) {
+    return callApi(method, args).catch(function (err) {
+      if (err.isAuthError && navigator.onLine) {
+        return fetchCsrf().then(function (r) {
+          if (r !== "ok") throw err;
+          return callApi(method, args);
+        });
+      }
+      throw err;
+    });
+  }
+
+  /* =====================================================================
+     OFFLINE QUEUE  (IndexedDB)
+  ===================================================================== */
+  var DB_NAME = "VisitCheckinOfflineDB", STORE = "pending_visits", dbPromise = null;
+
+  function openDB() {
+    if (dbPromise) return dbPromise;
+    dbPromise = new Promise(function (resolve, reject) {
+      if (!window.indexedDB) { reject(new Error("IndexedDB not available")); return; }
+      var req = indexedDB.open(DB_NAME, 1);
+      req.onupgradeneeded = function (e) {
+        var db = e.target.result;
+        if (!db.objectStoreNames.contains(STORE)) db.createObjectStore(STORE, { keyPath: "id", autoIncrement: true });
+      };
+      req.onsuccess = function (e) { resolve(e.target.result); };
+      req.onerror = function (e) { reject(e.target.error); };
+    });
+    return dbPromise;
+  }
+
+  function withStore(mode, fn) {
+    return openDB().then(function (db) {
+      return new Promise(function (resolve, reject) {
+        var tx = db.transaction(STORE, mode);
+        var req = fn(tx.objectStore(STORE));
+        tx.oncomplete = function () { resolve(req ? req.result : undefined); };
+        tx.onerror = function () { reject(tx.error); };
+        tx.onabort = function () { reject(tx.error); };
+      });
+    });
+  }
+  function queueAdd(item)  { return withStore("readwrite", function (s) { return s.add(item); }); }
+  function queuePut(item)  { return withStore("readwrite", function (s) { return s.put(item); }); }
+  function queueDel(id)    { return withStore("readwrite", function (s) { return s.delete(id); }); }
+  function queueAll()      { return withStore("readonly",  function (s) { return s.getAll(); }).then(function (r) { return r || []; }); }
+
+  /* =====================================================================
+     VISIT STATE  (server state + locally queued actions)
+  ===================================================================== */
+  function cachedBaseState() {
+    var c = load("vc_state");
+    return (c && c.date === localDateStr() && STATES[c.state]) ? c.state : "home_departure";
+  }
+
+  function paintState() {
+    var st = STATES[currentStateKey] || STATES.home_departure;
+    var btn = $("checkin-btn");
+    btn.textContent = st.label;
+    btn.disabled = st.action === "day_ended";
+    $("current-status-label").textContent = st.action === "day_ended" ? "Attendance completed for today" : "";
+  }
+
+  function paintBadge() {
+    var el = $("pending-sync-label");
+    var parts = [];
+    if (counts.pending || counts.failed || authBlocked) {
+      if (authBlocked && (counts.pending || counts.failed)) {
+        parts.push("\uD83D\uDD12 Login required to sync " + counts.pending + " entry(s) \u2014 tap here");
+      } else if (counts.pending) {
+        parts.push("\u23F3 " + counts.pending + " check-in(s) waiting to sync" +
+          (navigator.onLine ? " \u2014 tap to sync now" : " \u2014 offline, will sync automatically"));
+      }
+      if (counts.failed) parts.push("\u26A0 " + counts.failed + " failed \u2014 tap to review");
+    }
+    if (!parts.length) { el.style.display = "none"; return; }
+    el.textContent = parts.join("   \u00B7   ");
+    el.className = "badge " + ((counts.failed || authBlocked) ? "badge-red" : "badge-orange");
+    el.style.display = "block";
+  }
+
+  function renderCurrentState() {
+    return queueAll().catch(function () { return []; }).then(function (items) {
+      var key = baseStateKey || cachedBaseState();
+      var live = items.filter(function (i) { return !i.failed; }).sort(byId);
+      live.forEach(function (i) { key = NEXT_AFTER[i.action] || key; });
+      counts.pending = live.length;
+      counts.failed = items.length - live.length;
+      currentStateKey = key;
+      paintState();
+      paintBadge();
+    });
+  }
+
+  function refreshVisitStatus() {
+    if (syncing) return Promise.resolve();
+    if (!navigator.onLine) { baseStateKey = null; return renderCurrentState(); }
+
+    return callApiSafe("get_visit_status", {}).then(function (res) {
+      var m = res.message || {};
+      if (STATES[m.action]) {
+        baseStateKey = m.action;
+        store("vc_state", { date: localDateStr(), state: m.action });
+      }
+    }).catch(function (err) {
+      baseStateKey = null;
+      if (err.isAuthError) authBlocked = true;
+      else if (!err.isNetworkError) showMessage(err.message, true);
+    }).then(renderCurrentState);
+  }
+
+  /* =====================================================================
+     GPS
+  ===================================================================== */
+  function getPosition() {
+    return new Promise(function (resolve) {
+      if (!navigator.geolocation) { resolve(null); return; }
+
+      var offline = !navigator.onLine;
+      // Offline there is no network-assisted GPS, a fresh satellite fix can take up to ~1 min.
+      var timeoutMs = offline ? 60000 : 10000;
+      var done = false, timer = null;
+      var label = $("gps-label");
+
+      label.textContent = offline
+        ? "\uD83D\uDCCD Getting GPS location (offline \u2014 can take up to a minute)..."
+        : "\uD83D\uDCCD Getting GPS location...";
+      label.style.display = "block";
+
+      function finish(v) {
+        if (done) return;
+        done = true; clearTimeout(timer);
+        label.style.display = "none";
+        resolve(v);
+      }
+      timer = setTimeout(function () { finish(null); }, timeoutMs + 1500);
+
+      navigator.geolocation.getCurrentPosition(
+        function (p) { finish({ lat: p.coords.latitude, lng: p.coords.longitude }); },
+        function () { finish(null); },
+        { enableHighAccuracy: true, timeout: timeoutMs, maximumAge: 0 }
+      );
+    });
+  }
+
+  /* =====================================================================
+     CAMERA
+  ===================================================================== */
+  var cameraStream = null, capturedDataUrl = null, capturedAtIso = null;
+
+  function needsCustomerField() {
+    var st = STATES[currentStateKey];
+    if (st.needs_customer === true) return true;
+    return st.needs_customer === "optional" && !$("mark-home-checkbox").checked;
+  }
+
+  function openCamera() {
+    var st = STATES[currentStateKey];
+    if (!st || st.action === "day_ended") return;
+
+    $("camera-title").textContent = st.label;
+    $("mark-home-checkbox").checked = false;
+    $("mark-home-wrap").style.display = st.needs_customer === "optional" ? "block" : "none";
+    $("customer-name-input").value = "";
+    $("customer-name-input").style.display = needsCustomerField() ? "block" : "none";
+
+    $("camera-preview-img").style.display = "none";
+    $("camera-video").style.display = "block";
+    $("capture-photo-btn").style.display = "inline-block";
+    $("retake-photo-btn").style.display = "none";
+    $("confirm-photo-btn").style.display = "none";
+    capturedDataUrl = null; capturedAtIso = null;
+
+    $("camera-modal").style.display = "flex";
+
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      closeCamera();
+      showMessage("Camera is not available in this browser", true);
+      return;
+    }
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false })
+      .then(function (stream) {
+        cameraStream = stream;
+        var v = $("camera-video");
+        v.srcObject = stream;
+        var p = v.play(); if (p && p.catch) p.catch(function () {});
+      })
+      .catch(function () {
+        closeCamera();
+        showMessage("Camera permission is required for check-in. Please allow camera access.", true);
+      });
+  }
+
+  function closeCamera() {
+    if (cameraStream) { cameraStream.getTracks().forEach(function (t) { t.stop(); }); cameraStream = null; }
+    $("camera-modal").style.display = "none";
+  }
+
+  function capturePhoto() {
+    var v = $("camera-video"), c = $("camera-canvas");
+    var w = v.videoWidth, h = v.videoHeight;
+    if (!w || !h) { showMessage("Camera is not ready yet, please try again", true); return; }
+
+    var scale = Math.min(1, 1024 / Math.max(w, h));   // keep the offline queue small
+    c.width = Math.round(w * scale); c.height = Math.round(h * scale);
+    c.getContext("2d").drawImage(v, 0, 0, c.width, c.height);
+
+    capturedDataUrl = c.toDataURL("image/jpeg", 0.7);
+    capturedAtIso = new Date().toISOString();
+
+    $("camera-preview-img").src = capturedDataUrl;
+    $("camera-preview-img").style.display = "block";
+    v.style.display = "none";
+    $("capture-photo-btn").style.display = "none";
+    $("retake-photo-btn").style.display = "inline-block";
+    $("confirm-photo-btn").style.display = "inline-block";
+  }
+
+  function retakePhoto() {
+    $("camera-preview-img").style.display = "none";
+    $("camera-video").style.display = "block";
+    $("capture-photo-btn").style.display = "inline-block";
+    $("retake-photo-btn").style.display = "none";
+    $("confirm-photo-btn").style.display = "none";
+    capturedDataUrl = null; capturedAtIso = null;
+  }
+
+  /* =====================================================================
+     SUBMIT  (online -> server, otherwise -> local queue)
+  ===================================================================== */
+  function queueEntry(payload, capturedAt, message, isError) {
+    var item = {};
+    Object.keys(payload).forEach(function (k) { item[k] = payload[k]; });
+    item.client_time = capturedAt;
+    item.failed = false;
+    item.error = "";
+    item.queued_at = Date.now();
+
+    return queueAdd(item).then(function () {
+      showMessage(message, isError);
+    }, function () {
+      showMessage("Could not save on this phone either. Please try again.", true);
+    }).then(renderCurrentState);
+  }
+
+  function submitPayload(payload, capturedAt) {
+    var offlineMsg = "No internet \u2014 saved on this phone. It will sync automatically once you are online.";
+
+    if (!navigator.onLine) return queueEntry(payload, capturedAt, offlineMsg, false);
+
+    return callApiSafe("submit_visit_milestone", payload).then(function (res) {
+      var m = res.message || {};
+      var msg = "Saved";
+      if (m.location_missing) msg = "Saved (GPS location was not available)";
+      else if (payload.action === "customer_arrival" && m.distance_km != null)
+        msg = "Saved \u00B7 " + m.distance_km + " km from start (" + (m.distance_source || "") + ")";
+      toast(msg);
+      return refreshVisitStatus().then(function () { return loadCalendar(); });
+    }, function (err) {
+      if (err.isNetworkError) return queueEntry(payload, capturedAt, offlineMsg, false);
+      if (err.isAuthError) {
+        authBlocked = true;
+        return queueEntry(payload, capturedAt, "Your session expired. The entry is saved on this phone \u2014 log in again to sync it.", true);
+      }
+      showMessage(err.message, true);
+      return renderCurrentState();
+    });
+  }
+
+  function confirmCapture() {
+    var st = STATES[currentStateKey];
+    var action = st.action;
+    if (action === "customer_arrival_or_home") action = $("mark-home-checkbox").checked ? "home_arrival" : "customer_arrival";
+
+    var customer = $("customer-name-input").value.trim();
+    if (action === "customer_arrival" && !customer) { showMessage("Customer name is required", true); return; }
+    if (!capturedDataUrl) { showMessage("Please capture a photo first", true); return; }
+
+    var photo = capturedDataUrl, capturedAt = capturedAtIso;
+    closeCamera();
+    $("checkin-btn").disabled = true;
+
+    getPosition().then(function (pos) {
+      return submitPayload({
+        action: action,
+        latitude: pos ? pos.lat : null,
+        longitude: pos ? pos.lng : null,
+        photo: photo,
+        customer_name: customer,
+        client_ref: uid()
+      }, capturedAt);
+    }).then(paintState, paintState);
+  }
+
+  /* =====================================================================
+     SYNC
+  ===================================================================== */
+  function markFailed(item, message) {
+    item.failed = true;
+    item.error = message || "Rejected by server";
+    return queuePut(item);
+  }
+
+  function syncSequential(items, i, stats) {
+    if (i >= items.length) return Promise.resolve();
+    var it = items[i];
+
+    function next() { return renderCurrentState().then(function () { return syncSequential(items, i + 1, stats); }); }
+
+    return callApi("submit_visit_milestone", {
+      action: it.action, latitude: it.latitude, longitude: it.longitude, photo: it.photo,
+      customer_name: it.customer_name, client_time: it.client_time, client_ref: it.client_ref
+    }).then(function () {
+      stats.synced++;
+      return queueDel(it.id).then(next);
+    }, function (err) {
+      if (err.isNetworkError) return Promise.resolve();               // pause, retry later
+      if (err.isAuthError) { authBlocked = true; return Promise.resolve(); }
+      return markFailed(it, err.message).then(next);                  // business error: park it, continue
+    });
+  }
+
+  function trySyncQueue() {
+    if (syncing || !navigator.onLine || !csrfToken) return Promise.resolve();
+    syncing = true;
+    var stats = { synced: 0 };
+
+    return queueAll().then(function (items) {
+      var live = items.filter(function (i) { return !i.failed; }).sort(byId);
+      if (!live.length) return;
+      authBlocked = false;
+      return syncSequential(live, 0, stats);
+    }).catch(function () {}).then(function () {
+      syncing = false;
+      if (!stats.synced) return renderCurrentState();     // nothing reached the server: no extra calls
+      return refreshVisitStatus().then(function () {
+        toast(stats.synced + " offline check-in(s) synced");
+        return loadCalendar();
+      });
+    });
+  }
+
+  function showFailedModal() {
+    queueAll().then(function (items) {
+      var failed = items.filter(function (i) { return i.failed; }).sort(byId);
+      if (!failed.length) return;
+      var html = '<div class="boxhead"><h3>Entries that could not sync</h3><button class="x" data-close type="button">&times;</button></div>';
+      failed.forEach(function (i) {
+        html += '<div class="fail-row"><div><b>' + esc(ACTION_LABELS[i.action] || i.action) + "</b>" +
+          (i.customer_name ? " \u00B7 " + esc(i.customer_name) : "") + " \u00B7 " + esc(fmtLocal(i.client_time)) + "</div>" +
+          '<div class="err">' + esc(i.error) + "</div>" +
+          '<button data-act="retry" data-id="' + i.id + '" style="background:#2196F3">Retry</button>' +
+          '<button data-act="discard" data-id="' + i.id + '" style="background:#F44336">Discard</button></div>';
+      });
+      var ov = openOverlay("failed-ov", html);
+      ov.addEventListener("click", function (e) {
+        var b = e.target.closest ? e.target.closest("button[data-act]") : null;
+        if (!b) return;
+        var id = Number(b.getAttribute("data-id"));
+        var act = b.getAttribute("data-act");
+        var item = failed.filter(function (f) { return f.id === id; })[0];
+        if (!item) return;
+        var op = act === "discard" ? queueDel(id) : (item.failed = false, item.error = "", queuePut(item));
+        op.then(function () { ov.remove(); return renderCurrentState(); })
+          .then(function () { return act === "retry" ? trySyncQueue() : refreshVisitStatus(); });
+      });
+    });
+  }
+
+  /* =====================================================================
+     CALENDAR / LISTS
+  ===================================================================== */
+  function loadCalendar() {
+    var key = "vc_cal_" + calYear + "_" + calMonth;
+
+    if (!navigator.onLine) { return Promise.resolve(showCachedCalendar(key)); }
+
+    return callApiSafe("get_employee_attendance_calendar", { year: calYear, month: calMonth })
+      .then(function (res) {
+        if (!res.message) return;
+        store(key, res.message);
+        store("vc_emp_name", res.message.employee_name);
+        lastCalendarData = res.message;
+        renderCalendar(res.message);
+      })
+      .catch(function (err) {
+        if (err.isNetworkError || err.isAuthError) { showCachedCalendar(key); return; }
+        showMessage(err.message, true);
+      });
+  }
+
+  function showCachedCalendar(key) {
+    var cached = load(key);
+    var name = load("vc_emp_name");
+    if (name) $("emp-name-header").textContent = name;
+    if (cached) { lastCalendarData = cached; renderCalendar(cached); }
+    else {
+      $("month-label").textContent = MONTHS[calMonth - 1] + " " + calYear;
+      $("calendar-grid").innerHTML = '<div class="muted" style="grid-column:1/-1;text-align:center;padding:16px">Calendar is not available offline for this month.</div>';
+    }
+  }
+
+  function renderCalendar(data) {
+    $("emp-name-header").textContent = data.employee_name;
+    $("present-count").textContent = data.present_count;
+    $("halfday-count").textContent = data.half_day_count;
+    $("absent-count").textContent = data.absent_count;
+    $("leave-count").textContent = data.leave_count;
+    $("month-label").textContent = MONTHS[data.month - 1] + " " + data.year;
+
+    var grid = $("calendar-grid");
+    grid.innerHTML = "";
+    ["S", "M", "T", "W", "T", "F", "S"].forEach(function (d) {
+      var h = document.createElement("div"); h.className = "dow"; h.textContent = d; grid.appendChild(h);
+    });
+
+    var startDay = new Date(data.year, data.month - 1, 1).getDay();
+    var days = new Date(data.year, data.month, 0).getDate();
+    for (var i = 0; i < startDay; i++) grid.appendChild(document.createElement("div"));
+
+    for (var day = 1; day <= days; day++) {
+      var dateKey = data.year + "-" + pad(data.month) + "-" + pad(day);
+      var status = data.day_status[dateKey];
+      var cell = document.createElement("div");
+      cell.className = "cell";
+      cell.textContent = day;
+      if (status && STATUS_COLORS[status]) { cell.style.background = STATUS_COLORS[status]; cell.style.color = "#fff"; }
+      (function (k, s) { cell.addEventListener("click", function () { showDateCheckins(k, s); }); })(dateKey, status);
+      grid.appendChild(cell);
+    }
+
+    // leave balance
+    var lb = $("leave-balance-section");
+    lb.innerHTML = "";
+    if (!data.leave_balance || !data.leave_balance.length) lb.innerHTML = '<div class="muted">No leave balance found</div>';
+    else data.leave_balance.forEach(function (it) {
+      var c = document.createElement("div"); c.className = "card";
+      c.innerHTML = "<b>" + esc(it.balance) + "</b><span>" + esc(it.leave_type) + "</span>";
+      lb.appendChild(c);
+    });
+
+    // holidays
+    var hs = $("holidays-section");
+    hs.innerHTML = "";
+    if (!data.holidays || !data.holidays.length) hs.innerHTML = '<div class="muted">No holidays this month</div>';
+    else data.holidays.forEach(function (h) {
+      var r = document.createElement("div"); r.className = "hol";
+      r.innerHTML = "<span>" + esc(h.description) + '</span><span style="color:#888">' + esc(h.date) + "</span>";
+      hs.appendChild(r);
+    });
+  }
+
+  function showDateCheckins(dateKey, status) {
+    if (!lastCalendarData) return;
+    var list = (lastCalendarData.checkins_by_date || {})[dateKey] || [];
+    var pretty = new Date(dateKey + "T00:00:00").toLocaleDateString("en-GB", { day: "2-digit", month: "long", year: "numeric" });
+    var color = STATUS_COLORS[status] || "#777";
+
+    var html = '<div class="boxhead"><div><div style="font-size:19px;font-weight:600">' + esc(pretty) + "</div>" +
+      '<span style="display:inline-block;margin-top:5px;padding:4px 10px;border-radius:12px;background:' + color + ';color:#fff;font-size:12px;font-weight:600">' +
+      esc(status || "No Attendance") + '</span></div><button class="x" data-close type="button">&times;</button></div>';
+
+    if (!list.length) html += '<div class="muted" style="text-align:center;padding:20px">No check-in records for this date.</div>';
+    else list.forEach(function (c) {
+      html += '<div style="display:flex;justify-content:space-between;padding:12px;margin-bottom:8px;border-radius:9px;background:#f8f8f8">' +
+        '<b style="color:' + (c.log_type === "IN" ? "#4CAF50" : "#F44336") + '">' + esc(c.log_type) + "</b><span>" + esc(c.time) + "</span></div>";
+    });
+    openOverlay("date-ov", html);
+  }
+
+  function showStatusDateList(statusName) {
+    if (!lastCalendarData) return;
+    var dayStatus = lastCalendarData.day_status || {}, byDate = lastCalendarData.checkins_by_date || {};
+    var dates = Object.keys(dayStatus).filter(function (k) { return dayStatus[k] === statusName; }).sort();
+
+    var rows = "";
+    dates.forEach(function (d) {
+      rows += '<tr style="background:#fafafa"><td colspan="2"><b>' + esc(d) + "</b></td></tr>";
+      var list = byDate[d] || [];
+      if (!list.length) rows += '<tr><td colspan="2" class="muted">No check-in records</td></tr>';
+      list.forEach(function (c) {
+        rows += '<tr><td style="font-weight:600;color:' + (c.log_type === "IN" ? "#4CAF50" : "#F44336") + '">' + esc(c.log_type) + "</td><td>" + esc(c.time) + "</td></tr>";
+      });
+    });
+    if (!dates.length) rows = '<tr><td colspan="2" class="muted">No records found</td></tr>';
+    showListModal(statusName + " Days", "<th>Date / Type</th><th>Time</th>", rows);
+  }
+
+  function showCheckinList() {
+    callApiSafe("get_employee_last_checkins", {}).then(function (res) {
+      var rows = (res.message && res.message.checkins) || [], html = "";
+      rows.forEach(function (r) {
+        html += '<tr><td style="font-weight:600;color:' + (r.log_type === "IN" ? "#4CAF50" : "#F44336") + '">' + esc(r.log_type) + "</td><td>" + esc(r.time) + "</td></tr>";
+      });
+      if (!rows.length) html = '<tr><td colspan="2" class="muted">No checkins found</td></tr>';
+      showListModal("Last Checkins", "<th>Type</th><th>Time</th>", html);
+    }).catch(function (err) {
+      showMessage(err.isNetworkError ? "You are offline" : err.message, true);
+    });
+  }
+
+  function showVisitList() {
+    var serverRows = navigator.onLine
+      ? callApiSafe("get_today_visits", {}).then(function (r) { return (r.message && r.message.visits) || []; }).catch(function () { return []; })
+      : Promise.resolve([]);
+
+    Promise.all([serverRows, queueAll().catch(function () { return []; })]).then(function (res) {
+      var rows = "";
+      res[0].forEach(function (r) {
+        rows += "<tr><td><b>" + esc(r.milestone) + "</b></td><td>" + esc(r.customer_name || "-") + "</td><td>" +
+          esc(r.time_spent_minutes || "-") + "</td><td>" + esc(r.distance_from_home_km || "-") + "</td></tr>";
+      });
+      res[1].filter(function (i) { return !i.failed; }).sort(byId).forEach(function (i) {
+        rows += '<tr style="background:#FFF8E1"><td><b>' + esc(ACTION_LABELS[i.action] || i.action) + "</b></td><td>" +
+          esc(i.customer_name || "-") + '</td><td colspan="2" style="color:#E65100">pending sync</td></tr>';
+      });
+      if (!rows) rows = '<tr><td colspan="4" class="muted" style="text-align:center">No visits recorded today</td></tr>';
+      showListModal("Today's Customer Visits", "<th>Milestone</th><th>Customer</th><th>Mins</th><th>KM</th>", rows);
+    });
+  }
+
+  /* =====================================================================
+     EVENTS
+  ===================================================================== */
+  function bindEvents() {
+    $("refresh-btn").addEventListener("click", function () { window.location.reload(); });
+    $("checkin-btn").addEventListener("click", openCamera);
+    $("capture-photo-btn").addEventListener("click", capturePhoto);
+    $("retake-photo-btn").addEventListener("click", retakePhoto);
+    $("confirm-photo-btn").addEventListener("click", confirmCapture);
+    $("cancel-camera-btn").addEventListener("click", closeCamera);
+
+    $("mark-home-checkbox").addEventListener("change", function () {
+      var input = $("customer-name-input");
+      input.style.display = needsCustomerField() ? "block" : "none";
+      if (this.checked) input.value = "";
+    });
+
+    $("pending-sync-label").addEventListener("click", function () {
+      if (counts.failed) showFailedModal();
+      else if (authBlocked) window.location.href = LOGIN_URL;
+      else trySyncQueue();
+    });
+
+    $("present-block").addEventListener("click", function () { showStatusDateList("Present"); });
+    $("halfday-block").addEventListener("click", function () { showStatusDateList("Half Day"); });
+    $("absent-block").addEventListener("click", function () { showStatusDateList("Absent"); });
+    $("leave-block").addEventListener("click", function () { showStatusDateList("On Leave"); });
+
+    $("view-checkin-list").addEventListener("click", function (e) { e.preventDefault(); showCheckinList(); });
+    $("view-visit-list").addEventListener("click", function (e) { e.preventDefault(); showVisitList(); });
+
+    $("prev-month-btn").addEventListener("click", function () {
+      calMonth--; if (calMonth < 1) { calMonth = 12; calYear--; } loadCalendar();
+    });
+    $("next-month-btn").addEventListener("click", function () {
+      calMonth++; if (calMonth > 12) { calMonth = 1; calYear++; } loadCalendar();
+    });
+
+    $("apply-leave-btn").addEventListener("click", function () {
+      if (!navigator.onLine) { showMessage("You are offline", true); return; }
+      window.location.href = "/app/leave-application/new";
+    });
+    $("attendance-request-btn").addEventListener("click", function () {
+      if (!navigator.onLine) { showMessage("You are offline", true); return; }
+      window.location.href = "/app/attendance-request/new";
+    });
+
+    window.addEventListener("online", function () {
+      updateConn();
+      fetchCsrf().then(function (r) {
+        if (r === "guest") { authBlocked = true; paintBadge(); return; }
+        authBlocked = false;
+        return trySyncQueue();
+      });
+    });
+    window.addEventListener("offline", function () { updateConn(); renderCurrentState(); });
+
+    // iOS does not always fire "online" when the app is re-opened from the background
+    document.addEventListener("visibilitychange", function () {
+      if (document.visibilityState === "visible") { updateConn(); trySyncQueue(); }
+    });
+
+    $("ios-hint-close").addEventListener("click", function () { $("ios-hint").style.display = "none"; store("vc_hint_dismissed", 1); });
+  }
+
+  function maybeShowInstallHint() {
+    var ua = navigator.userAgent || "";
+    var isIOS = /iphone|ipad|ipod/i.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+    var standalone = window.navigator.standalone === true || (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches);
+    if (isIOS && !standalone && !load("vc_hint_dismissed")) $("ios-hint").style.display = "block";
+  }
+
+  /* =====================================================================
+     BOOT
+  ===================================================================== */
+  function start() {
+    var name = load("vc_emp_name");
+    if (name) $("emp-name-header").textContent = name;
+
+    renderCurrentState();
+    refreshVisitStatus().then(function () { return trySyncQueue(); });
+    loadCalendar();
+    setInterval(trySyncQueue, 20000);
+  }
+
+  function boot() {
+    updateConn();
+    bindEvents();
+    maybeShowInstallHint();
+
+    fetchCsrf().then(function (result) {
+      if (result === "ok") { start(); return; }
+
+      if (result === "guest") {            // network is fine but the session is gone
+        window.location.href = LOGIN_URL;
+        return;
+      }
+
+      // no network at all: run from the cached shell with the last known token
+      var cached = load("vc_csrf");
+      if (cached) { csrfToken = cached; start(); return; }
+
+      $("emp-name-header").textContent = "No internet";
+      $("current-status-label").textContent = "Open this app once with internet and log in. After that it also works offline.";
+    });
+  }
+
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("/assets/visit_checkin/visit-checkin/service-worker.js").catch(function () {});
+  }
+
+  boot();
+})();
+</script>
+</body>
+</html>
