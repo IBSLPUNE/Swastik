@@ -5,7 +5,7 @@ from frappe import _
 def execute(filters=None):
     filters = frappe._dict(filters or {})
     data = get_data(filters)
-    return get_columns(), data, None, get_chart(data), get_summary(data)
+    return get_columns(), data, None, None, get_summary(data)
 
 
 def get_columns():
@@ -26,7 +26,7 @@ def get_columns():
         {"label": _("Arrival Photo"), "fieldname": "arrival_photo", "fieldtype": "Data", "width": 100},
         {"label": _("Departure Photo"), "fieldname": "departure_photo", "fieldtype": "Data", "width": 110},
         {"label": _("Offline"), "fieldname": "is_offline_entry", "fieldtype": "Check", "width": 70},
-        {"label": _("Log"), "fieldname": "name", "fieldtype": "Link", "options": "Customer Visit Log", "width": 130},
+        {"label": _("Log"), "fieldname": "name", "fieldtype": "Link", "options": "Customer Visit Log", "width": 100},
     ]
 
 
