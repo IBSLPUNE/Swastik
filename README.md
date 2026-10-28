@@ -96,3 +96,4 @@ Distance origin = Employee master home coordinates if filled, otherwise the loca
 ## Not included yet
 
 Face recognition match, late-mark / payroll-deduction policy and category-wise milestone sets are separate phases.
+# Swastik
